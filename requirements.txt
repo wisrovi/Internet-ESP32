@@ -1,0 +1,15 @@
+Es necesario instalar estas librerias:
+
+https://github.com/bblanchon/ArduinoJson.git
+https://github.com/ayushsharma82/AsyncElegantOTA.git
+https://github.com/me-no-dev/AsyncTCP.git
+https://github.com/me-no-dev/ESPAsyncWebServer.git
+https://github.com/esp8266/Arduino/tree/master/libraries/Hash
+https://github.com/csquared/arduino-restclient.git
+https://github.com/wisrovi/ReemplazoLibreriasESP32
+https://github.com/tzapu/WiFiManager.git
+https://github.com/bbx10/WiFiManager.git
+
+
+Todas las ibrerias se pueden descargar en conjunto de:
+
