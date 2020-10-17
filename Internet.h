@@ -14,6 +14,8 @@
 #ifdef useWifi
 bool thereConectionWifi = false;
 #define EspacioMemoriaWifi 15000 //8500
+#define time_check_keep_alive_wifi	60000
+unsigned int localUdpPort = 3333;
 #endif
 
 #ifdef useEth
@@ -63,6 +65,59 @@ typedef String (*fptr)(String);
 #include <WebServer.h>
 #include <WiFiManager.h>
 
+#include <WiFiUdp.h>
+WiFiUDP Udp;
+String getId_ESP_internet()
+{
+  uint64_t chipid = ESP.getEfuseMac();
+  String id = String((uint32_t)chipid);
+
+  String mac = WiFi.macAddress();
+  id = mac.substring(mac.length() - 2, mac.length() - 1) + id + mac.substring(mac.length() - 1, mac.length());
+  return id;
+}
+void ActivateUPD() {
+  Udp.begin(localUdpPort);
+}
+void LeerUDP() {
+  // receive incoming UDP packets
+  char incomingPacket[255];
+  int len = Udp.read(incomingPacket, 255);
+  if (len > 0)
+  {
+    incomingPacket[len] = 0;
+  }
+  Serial.printf("UDP packet contents: %s\n", incomingPacket);
+}
+void RespondUDP() {
+  String id_esp = getId_ESP_internet();
+
+  String data_response = "{ \"id_esp\" : ";
+  data_response.concat(id_esp);
+  data_response.concat(", \"name\" : \"ESP\" }");
+
+  char data_response_char[100];
+  data_response.toCharArray(data_response_char, 100);
+
+  Udp.beginPacket(Udp.remoteIP(), Udp.remotePort());
+  Udp.print(data_response_char); 
+  Udp.endPacket();
+}
+void ReceivedUDP() {
+  int packetSize = Udp.parsePacket();
+  if (packetSize)
+  {
+    Serial.print("Escuchando a:");
+    Serial.print(Udp.remoteIP().toString().c_str());
+    Serial.print(" - en el puerto: ");
+    Serial.println(Udp.remotePort());
+
+    LeerUDP();
+
+    RespondUDP();
+  }
+}
+
 #include <Hash.h>
 #include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
@@ -98,7 +153,7 @@ bool RegistrarNuevoServicioGet(String url, THandlerFunction fn)
     }
     else
     {
-      Serial.print("[WIFI]: El servicio '");
+      Serial.print("ivAdventure@wisrovi: [/]:  [WIFI]: El servicio '");
       Serial.print(url);
       Serial.println("' no se puede crear, ya existe o esta reservado.");
     }
@@ -178,7 +233,7 @@ void deshabilitarWifimanager()
 
 void keepWiFiAlive(void *parameter)
 {
-  Serial.print("[WIFI]: [Core 1]: ");
+  Serial.print("ivAdventure@wisrovi: [/]:  [WIFI]: [Core 1]: ");
   Serial.println(xPortGetCoreID());
 
   rutasUrl["/"] = true;
@@ -195,7 +250,7 @@ void keepWiFiAlive(void *parameter)
   bool heObtenidoIpConCredenciales = false;
   while (useCredentialsConfigured == true && heObtenidoIpConCredenciales == false)
   {
-    Serial.println("\n[WIFI]: Usando credenciales para buscar ip");
+    Serial.println("\n ivAdventure@wisrovi: [/]:  [WIFI]: Usando credenciales para buscar ip");
     WiFi.begin(nombreAP_char, passwordAP_char);
     byte contadorTiempoConexion = 0;
     while (WiFi.status() != WL_CONNECTED)
@@ -226,11 +281,11 @@ void keepWiFiAlive(void *parameter)
 
   if (useCredentialsConfigured == false && usarWifiManager == true)
   {
-    Serial.println("[WIFI]: Las credenciales dadas no son validas, se ha activado un AP para que desde el movil pueda configurar la Wifi, favor ingresar a: 192.168.4.1 en un navegador.");
+    Serial.println("ivAdventure@wisrovi: [/]:  [WIFI]: Las credenciales dadas no son validas, se ha activado un AP para que desde el movil pueda configurar la Wifi, favor ingresar a: 192.168.4.1 en un navegador.");
     //wifiManager.setTimeout(300);
     wifiManager.setDebugOutput(debugWifiManager);
     wifiManager.autoConnect(DEVICE_NAME);
-    Serial.println("\n[WIFI]: Las nuevas credenciales han sido almacenadas.");
+    Serial.println("\n ivAdventure@wisrovi: [/]:  [WIFI]: Las nuevas credenciales han sido almacenadas.");
   }
 
   if (WiFi.status() != WL_CONNECTED)
@@ -250,7 +305,7 @@ void keepWiFiAlive(void *parameter)
   {
     if (usarWifiManager == false)
     {
-      Serial.println("\n[WIFI]: Cerrando la tarea pues con las credenciales dadas no es posible conectarse a la red y se ha desactivado el WifiManager.");
+      Serial.println("\nivAdventure@wisrovi: [/]:  [WIFI]: Cerrando la tarea pues con las credenciales dadas no es posible conectarse a la red y se ha desactivado el WifiManager.");
       vTaskDelete(NULL); //borrar esta tarea
     }
   }
@@ -274,14 +329,15 @@ void keepWiFiAlive(void *parameter)
         }
         vTaskDelay(15 / portTICK_PERIOD_MS);
         AsyncElegantOTA.loop();
+        ReceivedUDP();
       }
       conteoIntentosConexion = 0;
       thereConectionWifi = true;
       if (servidorWifi_iniciado == true)
       {
-        if (millis() - startAttemptTime > 30000)
+        if (millis() - startAttemptTime > time_check_keep_alive_wifi)
         {
-          Serial.print("[WIFI]: [Core 1]: ");
+          Serial.print("ivAdventure@wisrovi: [/]:  [WIFI]: [Core 1]: ");
           Serial.println(xPortGetCoreID());
         }
         continue;
@@ -295,7 +351,7 @@ void keepWiFiAlive(void *parameter)
 
     if (thereConectionWifi == false)
     {
-      Serial.println("[WIFI] Connecting...");
+      Serial.println("ivAdventure@wisrovi: [/]:  [WIFI] Connecting...");
       if (conteoIntentosConexion <= 2)
       {
         char ssid_char[ssid.length() + 1];
@@ -314,7 +370,7 @@ void keepWiFiAlive(void *parameter)
         {
           WiFi.begin(nombreAP_char, passwordAP_char);
           byte contadorTiempoConexion = 0;
-          Serial.println("Usando credenciales para buscar ip 2");
+          Serial.println("ivAdventure@wisrovi: [/]:  [WIFI]: Usando credenciales para buscar ip 2");
           while (WiFi.status() != WL_CONNECTED)
           {
             vTaskDelay(500 / portTICK_PERIOD_MS);
@@ -361,7 +417,7 @@ void keepWiFiAlive(void *parameter)
     // If we couldn't connect within the timeout period, retry in 30 seconds.
     if (WiFi.status() != WL_CONNECTED)
     {
-      Serial.println("[WIFI]: FAILED");
+      Serial.println("ivAdventure@wisrovi: [/]:  [WIFI]: FAILED");
       conteoIntentosConexion++;
       servidorWifi_iniciado = false;
       vTaskDelay(30000 / portTICK_PERIOD_MS);
@@ -375,7 +431,7 @@ void keepWiFiAlive(void *parameter)
 
     if (IniciarServidorWifi == true)
     {
-      Serial.print("[WIFI]: Connected: ");
+      Serial.print("ivAdventure@wisrovi: [/]:  [WIFI]: Connected: ");
       Serial.println(WiFi.localIP());
       thereConectionWifi = true;
 
@@ -386,7 +442,12 @@ void keepWiFiAlive(void *parameter)
       AsyncElegantOTA.begin(&server_OTA); // Start ElegantOTA
       server_OTA.onNotFound(notFound);
       server_OTA.begin();
-      Serial.println("[WIFI]: Activando OTA.");
+      Serial.println("ivAdventure@wisrovi: [/OTA/]:  [WIFI]: Activando OTA.");
+
+      ActivateUPD();
+      Serial.print("ivAdventure@wisrovi: [/UDP/]:  [WIFI]: Activando UDP in puerto ");
+      Serial.print(localUdpPort);
+      Serial.println(".");
       servidorWifi_iniciado = true;
     }
 
@@ -546,7 +607,7 @@ void keepEthAlive(void *parameter)
         Reset Ethernet: Wiz W5500 reset function.
     **/
 #ifdef internet_library_debug
-    Serial.print("[ETHERNET]: Resetting Wiz W5500 Ethernet Board...  ");
+    Serial.print("ivAdventure@wisrovi: [/]:  [ETHERNET]: Resetting Wiz W5500 Ethernet Board...  ");
 #endif
     pinMode(RESET_P, OUTPUT);
     digitalWrite(RESET_P, HIGH);
@@ -607,7 +668,7 @@ void keepEthAlive(void *parameter)
 
   { //Imprimir MAC
 #ifdef internet_library_debug
-    Serial.print("[ETHERNET]: MAC: ");
+    Serial.print("ivAdventure@wisrovi: [/]:  [ETHERNET]: MAC: ");
     for (byte i = 0; i < 6; i++)
     {
       Serial.print(eth_MAC[i], HEX);
@@ -625,7 +686,7 @@ void keepEthAlive(void *parameter)
     while (!thereConection)
     {
 #ifdef internet_library_debug
-      Serial.println("[ETHERNET]: Connecting...");
+      Serial.println("ivAdventure@wisrovi: [/]:  [ETHERNET]: Connecting...");
 #endif
       if (Ethernet.begin(eth_MAC) == 0)
       {
@@ -653,7 +714,7 @@ void keepEthAlive(void *parameter)
       }
     }
   }
-  Serial.print("[ETHERNET]: DHCP assigned IP: ");
+  Serial.print("ivAdventure@wisrovi: [/]:  [ETHERNET]: DHCP assigned IP: ");
   Serial.println(Ethernet.localIP());
 
   unsigned long startAttemptTime = millis();
@@ -664,7 +725,7 @@ void keepEthAlive(void *parameter)
     {
       startAttemptTime = millis();
 #ifdef internet_library_debug
-      Serial.print("[ETHERNET]: [Core 1]: ");
+      Serial.print("ivAdventure@wisrovi: [/]:  [ETHERNET]: [Core 1]: ");
       Serial.println(xPortGetCoreID());
 #endif
     }
@@ -675,14 +736,14 @@ void keepEthAlive(void *parameter)
       case 1:
 //renewed fail
 #ifdef internet_library_debug
-        //Serial.println("[ETHERNET]: Error: renewed fail");
+        //Serial.println("ivAdventure@wisrovi: [/]:  [ETHERNET]: Error: renewed fail");
 #endif
         thereConectionEthernet = false;
         break;
       case 2:
 //renewed success
 #ifdef internet_library_debug
-        //Serial.println("[ETHERNET]: Renewed success");
+        //Serial.println("ivAdventure@wisrovi: [/]:  [ETHERNET]: Renewed success");
         //print your local IP address:
         /*Serial.print("My IP address: ");
               Serial.println(Ethernet.localIP());*/
@@ -718,7 +779,7 @@ void keepEthAlive(void *parameter)
           {
             servidor_eth_activo_inicializado = true;
             serverETH.begin();
-            Serial.println("[ETHERNET]: Servidor iniciado.");
+            Serial.println("ivAdventure@wisrovi: [/]:  [ETHERNET]: Servidor iniciado.");
           }
           else
           {
@@ -727,7 +788,7 @@ void keepEthAlive(void *parameter)
             if (clientETH)
             {
 #ifdef internet_library_debug
-              Serial.println("[ETHERNET]: Nuevo cliente.");
+              Serial.println("ivAdventure@wisrovi: [/]:  [ETHERNET]: Nuevo cliente.");
 #endif
               bool currentLineIsBlank = true;
               String response = "";
@@ -755,7 +816,7 @@ void keepEthAlive(void *parameter)
 
                     {
 #ifdef internet_library_debug
-                      Serial.print("[ETHERNET]: data request: ");
+                      Serial.print("ivAdventure@wisrovi: [/]:  [ETHERNET]: data request: ");
 #endif
                       int index_start = response.indexOf('GET');
                       response = response.substring(index_start + 2);
@@ -825,7 +886,7 @@ void keepEthAlive(void *parameter)
 
               clientETH.stop();
 #ifdef internet_library_debug
-              Serial.println("[ETHERNET]: cliente desconectado");
+              Serial.println("ivAdventure@wisrovi: [/]:  [ETHERNET]: cliente desconectado");
 #endif
             }
           }
@@ -953,7 +1014,7 @@ bool RegistrarNuevoServicioGet(String url, THandlerFunction fn)
     }
     else
     {
-      Serial.print("[AP]: El servicio '");
+      Serial.print("ivAdventure@wisrovi: [/]:  [AP]: El servicio '");
       Serial.print(url);
       Serial.println("' no se puede crear, ya existe o esta reservado.");
     }
@@ -1102,7 +1163,7 @@ void ProcessClient(String ipCliente)
     }
     String allStationsConected;
     serializeJson(clientsStations, allStationsConected);
-    Serial.print("[AP]: ");
+    Serial.print("ivAdventure@wisrovi: [/]:  [AP]: ");
     Serial.println(allStationsConected);
   }
 }
@@ -1116,7 +1177,7 @@ void ProcesarClienteRequest(AsyncWebServerRequest *request)
 void WifiAP(void *pvParameters)
 {
   (void *)pvParameters;
-  Serial.print("Nucleo: ");
+  Serial.print("ivAdventure@wisrovi: [/]:  [WifiAP]: Nucleo: ");
   Serial.println(xPortGetCoreID());
 
   //WiFi.softAPConfig(apIP, apIP, IPAddress(255, 255, 255, 0));
@@ -1141,11 +1202,11 @@ void WifiAP(void *pvParameters)
 #endif
 
   Serial.println();
-  Serial.print("[AP]: SSID: ");
+  Serial.print("ivAdventure@wisrovi: [/]:  [AP]: SSID: ");
   Serial.println(nombreAP_char);
-  Serial.print("[AP]: PWD: ");
+  Serial.print("ivAdventure@wisrovi: [/]:  [AP]: PWD: ");
   Serial.println(passwordAP_char);
-  Serial.print("[AP]: Gate: ");
+  Serial.print("ivAdventure@wisrovi: [/]:  [AP]: Gate: ");
   Serial.println(WiFi.softAPIP());
 
   vTaskDelay(2500 / portTICK_PERIOD_MS);
@@ -1162,7 +1223,7 @@ void WifiAP(void *pvParameters)
 
       AsyncElegantOTA.begin(&server_OTA); // Start ElegantOTA
       server_OTA.begin();
-      Serial.println("[AP]: Iniciando Servidor");
+      Serial.println("ivAdventure@wisrovi: [/]:  [AP]: Iniciando Servidor");
     }
 
     if (servidorAP_iniciado)
@@ -1185,11 +1246,12 @@ void WifiAP(void *pvParameters)
       {
         if (numStationsConected > cantidadEstacionesConectadas)
         {
-          Serial.println("[AP]: cliente desconectado");
+          Serial.println("ivAdventure@wisrovi: [/]:  [AP]: cliente desconectado");
         }
         else
         {
-          Serial.println("[AP]: Nuevo cliente detectado");
+		  Serial.println("\n");
+          Serial.println("ivAdventure@wisrovi: [/]:  [AP]: Nuevo cliente detectado");
 
           tcpip_adapter_sta_list_t adapter_sta_list;
           { //extraigo la lista de estaciones
@@ -1241,7 +1303,7 @@ void WifiAP(void *pvParameters)
             }
             else
             {
-              Serial.print("[AP]: Error detectar mac o ip en cliente -> ");
+              Serial.print("ivAdventure@wisrovi: [/]:  [AP]: Error detectar mac o ip en cliente -> ");
               Serial.print("[ MAC: ");
               Serial.print(mac);
               Serial.print(" - IP: ");
@@ -1267,7 +1329,7 @@ void WifiAP(void *pvParameters)
               }
               else
               {
-                Serial.print("[AP]: Error detectar mac, la ip es: ");
+                Serial.print("ivAdventure@wisrovi: [/]:  [AP]: Error detectar mac, la ip es: ");
                 Serial.println(ip);
               }
               if (!ip.equals("0.0.0.0"))
@@ -1276,7 +1338,7 @@ void WifiAP(void *pvParameters)
               }
               else
               {
-                Serial.print("[AP]: Error detectar ip, la mac es: ");
+                Serial.print("ivAdventure@wisrovi: [/]:  [AP]: Error detectar ip, la mac es: ");
                 Serial.println(mac);
               }
               thisStation["id"] = idStation;
@@ -1471,7 +1533,7 @@ void internetResponse(void *parameter)
           }
           else
           {
-            Serial.print("[ETHERNET]: Status get: ");
+            Serial.print("ivAdventure@wisrovi: [/]:  [ETHERNET]: Status get: ");
             Serial.println(statusCode);
           }
         }
@@ -1507,7 +1569,7 @@ void internetResponse(void *parameter)
           }
           else
           {
-            Serial.print("[WIFI]: Error get: ");
+            Serial.print("ivAdventure@wisrovi: [/]:  [WIFI]: Error get: ");
             Serial.println(http.errorToString(httpCode).c_str());
           }
           http.end();
@@ -1517,7 +1579,7 @@ void internetResponse(void *parameter)
 
       if (!thereInternet)
       {
-        Serial.println("No hay internet, no se puede enviar el mensaje.");
+        Serial.println("ivAdventure@wisrovi: [/]:  No hay internet, no se puede enviar el mensaje.");
       }
     }
   }

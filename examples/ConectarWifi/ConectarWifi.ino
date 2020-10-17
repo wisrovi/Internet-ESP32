@@ -45,7 +45,7 @@ void setup() {
   if (ConfigRedWifiConection("CTEx", "C2Pr0du.") == false) {
     //se utiliza antes de configurar el internet para que la wifi se conecte a estas credenciales
     //esta instrucción no funciona si el modo AP esta activo
-    Serial.println("No se puede configurar una conexion a una red wifi mientras este activo un modo AP.");
+    Serial.println("ivAdventure@wisrovi: [/]:  No se puede configurar una conexion a una red wifi mientras este activo un modo AP.");
   }
   ConfigInternet(usarWifi, usarEth, isAP);
 
@@ -80,7 +80,7 @@ void loop() {
 
 void Nucleo0(void *pvParameters) { // This is a task.
   (void) pvParameters;
-  Serial.print("Nucleo: ");
+  Serial.print("ivAdventure@wisrovi: [/]:  Nucleo: ");
   Serial.println(xPortGetCoreID());
 
   pinMode(2, OUTPUT);
@@ -89,7 +89,7 @@ void Nucleo0(void *pvParameters) { // This is a task.
   for (;;) { // A Task shall never return or exit.
     if (millis() - startAttemptTime > 5000) {
       startAttemptTime = millis();
-      Serial.print("[Blink]: [Core 0]: "); Serial.println(xPortGetCoreID());
+      Serial.print("ivAdventure@wisrovi: [/]:  [Blink]: [Core 0]: "); Serial.println(xPortGetCoreID());
     }
 
     digitalWrite(2, !digitalRead(2));   // turn the LED on (HIGH is the voltage level)

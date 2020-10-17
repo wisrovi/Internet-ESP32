@@ -17,7 +17,7 @@
 TaskHandle_t nucleo0Handle = NULL;
 void Nucleo0(void *pvParameters) { // This is a task.
   (void) pvParameters;
-  Serial.print("Nucleo: ");
+  Serial.print("ivAdventure@wisrovi: [/]:  Nucleo: ");
   Serial.println(xPortGetCoreID());
 
   pinMode(2, OUTPUT);
@@ -43,19 +43,19 @@ void Nucleo0(void *pvParameters) { // This is a task.
 // Servicios get del esp
 
 String prueba(String variables){
-  Serial.print("Variables recibidas: ");
+  Serial.print("ivAdventure@wisrovi: [/]:  Variables recibidas: ");
   Serial.println(variables);
   return "hola mundo!.";
 }
 
 String saludar(String variables){
-  Serial.print("Variables recibidas: ");
+  Serial.print("ivAdventure@wisrovi: [/]:  Variables recibidas: ");
   Serial.println(variables);
   return "Bienvenido al mundo";
 }
 
 String despedir(String variables){
-  Serial.print("Variables recibidas: ");
+  Serial.print("ivAdventure@wisrovi: [/]:  Variables recibidas: ");
   Serial.println(variables);
   return "Que tengas un lindo dia";
 }
@@ -79,7 +79,7 @@ void setup() {
     }
   }
 
-  Serial.println("Conexion Ethernet completa.");
+  Serial.println("ivAdventure@wisrovi: [/]:  Conexion Ethernet completa.");
 
   {   //aca va la declaracion de los servicios de internet que se vayan a montar por el puerto ethernet
     //Estas instancias de peticion y respuesta se definen fuera de un Task y en el SETUP

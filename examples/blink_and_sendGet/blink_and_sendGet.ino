@@ -35,7 +35,7 @@ void loop() {
 
 void Nucleo0(void *pvParameters) { // This is a task.
   (void) pvParameters;
-  Serial.print("Nucleo: ");
+  Serial.print("ivAdventure@wisrovi: [/]: [Blynk]:  Nucleo: ");
   Serial.println(xPortGetCoreID());
 
   pinMode(2, OUTPUT);
@@ -46,7 +46,7 @@ void Nucleo0(void *pvParameters) { // This is a task.
   for (;;) { // A Task shall never return or exit.
     if (millis() - startAttemptTime > 5000) {
       startAttemptTime = millis();
-      Serial.print("[Blink]: [Core 0]: "); Serial.println(xPortGetCoreID());
+      Serial.print("ivAdventure@wisrovi: [/]:  [Blink]: [Core 0]: "); Serial.println(xPortGetCoreID());
       SendGet("172.16.66.84", 1986, "/esp32?Datos=holaMundoEstoEsUnaPruebaDeWISROVI");
       timeGetResponse = millis();
       esperarRespuesta = true;
@@ -55,7 +55,7 @@ void Nucleo0(void *pvParameters) { // This is a task.
     if (esperarRespuesta) {
       if (millis() - timeGetResponse > 2000) {
         esperarRespuesta = false;
-        Serial.print("RTA Internet: ");
+        Serial.print("ivAdventure@wisrovi: [/]:  RTA Internet: ");
         Serial.println(getResponse());
       }
     }
